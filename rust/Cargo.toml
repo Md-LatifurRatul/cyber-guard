@@ -1,0 +1,28 @@
+[package]
+name = "cyberguard_core"
+version = "0.1.0"
+edition = "2021"
+description = "CyberGuard security core — watermark, crypto, detection"
+
+[lib]
+name = "cyberguard_core"
+# cdylib for shared libraries (.so/.dylib), staticlib for iOS (.a)
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# AES-256-GCM authenticated encryption
+aes-gcm = "0.10"
+# Cryptographically secure random number generation
+rand = "0.8"
+
+[profile.release]
+# Optimize for size (important for mobile)
+opt-level = "s"
+# Link-time optimization across crate boundaries
+lto = true
+# Single codegen unit for maximum optimization
+codegen-units = 1
+# Strip debug symbols in release
+strip = true
+# Abort on panic instead of unwinding (smaller binary, no unwinding across FFI)
+panic = "abort"
