@@ -211,10 +211,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.textPrimary,
-              ),
+              style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
             ),
           ),
           Switch.adaptive(
@@ -268,12 +265,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
             thumbColor: AppTheme.primaryLight,
             overlayColor: AppTheme.primary.withValues(alpha: 0.15),
           ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            onChanged: onChanged,
-          ),
+          child: Slider(value: value, min: min, max: max, onChanged: onChanged),
         ),
       ],
     );

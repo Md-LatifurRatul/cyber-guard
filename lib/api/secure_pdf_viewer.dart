@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../platform/web_pdf_stub.dart'
+    if (dart.library.js_interop) '../platform/web_pdf_web.dart' as web_pdf;
 import '../ui/secure_content_widget.dart';
 import '../viewers/pdf/pdf_controller.dart';
 import '../viewers/pdf/pdf_page_renderer.dart';
@@ -282,7 +285,12 @@ class _SecurePdfViewerState extends State<SecurePdfViewer> {
       );
     }
 
-    // Rendered pages
+    // Web: show embedded PDF via HtmlElementView
+    if (kIsWeb && _pdfController.webUrl != null) {
+      return _WebPdfView(url: _pdfController.webUrl!);
+    }
+
+    // Native: rendered pages
     return PageView.builder(
       controller: _pageController,
       scrollDirection: widget.config.scrollDirection == PdfScrollDirection.vertical
@@ -458,6 +466,27 @@ class _PdfSearchBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Web-only PDF viewer that embeds the PDF URL in an HtmlElementView.
+///
+/// The browser's native PDF viewer handles rendering, navigation,
+/// and zoom. This is wrapped by [SecureContentWidget] for watermark
+/// and blur protection.
+class _WebPdfView extends StatelessWidget {
+  _WebPdfView({required this.url})
+      : _elementId = 'cyberguard_pdf_${url.hashCode}';
+
+  final String url;
+  final String _elementId;
+
+  @override
+  Widget build(BuildContext context) {
+    return web_pdf.createWebPdfView(
+      url: url,
+      elementId: _elementId,
     );
   }
 }

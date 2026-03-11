@@ -16,6 +16,10 @@ import 'player_state.dart';
 /// [Texture] widget uses [textureId] to render frames from the native
 /// player (ExoPlayer on Android, AVPlayer on iOS/macOS, HTML5 on web).
 ///
+/// On web, delegates to the JavaScript CyberGuardPlayer bridge. The
+/// video element is created and managed by the [SecureMediaPlayer] widget
+/// via HtmlElementView.
+///
 /// ## Usage:
 /// ```dart
 /// final controller = SecurePlayerController(
@@ -48,6 +52,13 @@ class SecurePlayerController extends ChangeNotifier {
   /// Unique player ID assigned by the native side.
   String? _playerId;
 
+  /// Whether this is a web player (uses JS bridge, no texture).
+  bool get isWebPlayer => kIsWeb;
+
+  /// The web player element ID for HtmlElementView.
+  String? _webElementId;
+  String? get webElementId => _webElementId;
+
   /// Position update timer for polling native position.
   Timer? _positionTimer;
 
@@ -57,11 +68,13 @@ class SecurePlayerController extends ChangeNotifier {
   // ─── Lifecycle ───
 
   /// Initialize the native player and obtain a texture ID.
-  ///
-  /// After this completes, [state.textureId] will be non-null and
-  /// the [Texture] widget can render frames.
   Future<void> initialize() async {
     if (_disposed) return;
+
+    if (kIsWeb) {
+      await _initializeWeb();
+      return;
+    }
 
     try {
       final sourceData = _encodeSource(source);
@@ -111,11 +124,38 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
+  /// Web-specific initialization — creates a logical player that the
+  /// widget layer will render via an HTML video element.
+  Future<void> _initializeWeb() async {
+    try {
+      _playerId = 'cyberguard_player_${DateTime.now().millisecondsSinceEpoch}';
+      _webElementId = _playerId;
+
+      _updateState(
+        _state.copyWith(
+          status: PlayerStatus.ready,
+          volume: config.initialVolume,
+          playbackSpeed: config.initialPlaybackSpeed,
+        ),
+      );
+    } catch (e) {
+      _updateState(
+        _state.copyWith(
+          status: PlayerStatus.error,
+          errorMessage: 'Web player error: $e',
+        ),
+      );
+    }
+  }
+
   // ─── Playback Controls ───
 
-  /// Start or resume playback.
   Future<void> play() async {
     if (_disposed || _playerId == null) return;
+    if (kIsWeb) {
+      _updateState(_state.copyWith(status: PlayerStatus.playing));
+      return;
+    }
     try {
       await _channel.invokeMethod('play', {'playerId': _playerId});
       _updateState(_state.copyWith(status: PlayerStatus.playing));
@@ -126,9 +166,12 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Pause playback.
   Future<void> pause() async {
     if (_disposed || _playerId == null) return;
+    if (kIsWeb) {
+      _updateState(_state.copyWith(status: PlayerStatus.paused));
+      return;
+    }
     try {
       await _channel.invokeMethod('pause', {'playerId': _playerId});
       _updateState(_state.copyWith(status: PlayerStatus.paused));
@@ -139,7 +182,6 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Toggle between play and pause.
   Future<void> togglePlayPause() async {
     if (_state.isPlaying) {
       await pause();
@@ -148,9 +190,12 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Seek to a specific position.
   Future<void> seekTo(Duration position) async {
     if (_disposed || _playerId == null) return;
+    if (kIsWeb) {
+      _updateState(_state.copyWith(position: position));
+      return;
+    }
     try {
       await _channel.invokeMethod('seekTo', {
         'playerId': _playerId,
@@ -162,24 +207,25 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Seek forward by [config.seekDuration].
   Future<void> seekForward() async {
     final target = _state.position + config.seekDuration;
     final clamped = target > _state.duration ? _state.duration : target;
     await seekTo(clamped);
   }
 
-  /// Seek backward by [config.seekDuration].
   Future<void> seekBackward() async {
     final target = _state.position - config.seekDuration;
     final clamped = target < Duration.zero ? Duration.zero : target;
     await seekTo(clamped);
   }
 
-  /// Set playback volume (0.0 – 1.0).
   Future<void> setVolume(double volume) async {
     if (_disposed || _playerId == null) return;
     final clamped = volume.clamp(0.0, 1.0);
+    if (kIsWeb) {
+      _updateState(_state.copyWith(volume: clamped));
+      return;
+    }
     try {
       await _channel.invokeMethod('setVolume', {
         'playerId': _playerId,
@@ -191,10 +237,13 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Set playback speed multiplier (0.25 – 4.0).
   Future<void> setPlaybackSpeed(double speed) async {
     if (_disposed || _playerId == null) return;
     final clamped = speed.clamp(0.25, 4.0);
+    if (kIsWeb) {
+      _updateState(_state.copyWith(playbackSpeed: clamped));
+      return;
+    }
     try {
       await _channel.invokeMethod('setPlaybackSpeed', {
         'playerId': _playerId,
@@ -206,10 +255,18 @@ class SecurePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Toggle fullscreen mode.
   void toggleFullscreen() {
     _updateState(_state.copyWith(isFullscreen: !_state.isFullscreen));
   }
+
+  /// Get the resolved media URL for web playback.
+  String? get resolvedUrl => switch (source) {
+        NetworkMediaSource(url: final url) => url,
+        AssetMediaSource(assetPath: final path) => 'assets/$path',
+        FileMediaSource(filePath: final path) => path,
+        LiveStreamMediaSource(url: final url) => url,
+        MemoryMediaSource() => null,
+      };
 
   // ─── Native Event Handling ───
 
@@ -287,6 +344,8 @@ class SecurePlayerController extends ChangeNotifier {
 
   Future<void> _pollPosition() async {
     if (_disposed || _playerId == null || !_state.isPlaying) return;
+    if (kIsWeb) return;
+
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>(
         'getPosition',
@@ -366,7 +425,7 @@ class SecurePlayerController extends ChangeNotifier {
     _positionTimer?.cancel();
     _positionTimer = null;
 
-    if (_playerId != null) {
+    if (_playerId != null && !kIsWeb) {
       try {
         await _channel.invokeMethod('dispose', {'playerId': _playerId});
       } on PlatformException {

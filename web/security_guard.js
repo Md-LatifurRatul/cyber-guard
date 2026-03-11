@@ -268,8 +268,6 @@
   function startDevToolsDetection() {
     if (_devToolsCheckInterval) return;
 
-    let checkCount = 0;
-
     _devToolsCheckInterval = setInterval(function () {
       let detected = false;
 
@@ -327,6 +325,110 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // LAYER 3B: CONTENT BLUR ON SCREENSHOT / FOCUS LOSS
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Briefly blur all content when a screenshot hotkey is detected.
+   *
+   * ## How this works:
+   * We apply a CSS filter (blur + opacity) to the Flutter canvas
+   * element and the entire body. macOS screenshot capture happens
+   * AFTER the keydown event is processed, so if we blur during
+   * keydown, the captured framebuffer will show blurred content.
+   *
+   * We restore after 800ms — long enough for the screenshot to
+   * complete but short enough to feel like a brief flash to the user.
+   */
+  const BLUR_OVERLAY_ID = "cyberguard-blur-overlay";
+
+  function _blurContentBriefly() {
+    // Create a full-screen black overlay instantly
+    let overlay = document.getElementById(BLUR_OVERLAY_ID);
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = BLUR_OVERLAY_ID;
+      overlay.style.cssText =
+        "position:fixed;top:0;left:0;width:100vw;height:100vh;" +
+        "background:rgba(10,10,15,0.95);z-index:999999;" +
+        "display:flex;align-items:center;justify-content:center;" +
+        "font-family:-apple-system,BlinkMacSystemFont,sans-serif;" +
+        "color:#6C63FF;font-size:18px;letter-spacing:2px;" +
+        "pointer-events:none;";
+      overlay.textContent = "CONTENT PROTECTED";
+      document.body.appendChild(overlay);
+    } else {
+      overlay.style.display = "flex";
+    }
+
+    // Also blur the underlying canvas
+    const canvases = document.querySelectorAll("canvas");
+    canvases.forEach(function (c) {
+      c.style.filter = "blur(30px)";
+    });
+
+    // Remove after 800ms
+    setTimeout(function () {
+      if (overlay) overlay.style.display = "none";
+      canvases.forEach(function (c) {
+        c.style.filter = "";
+      });
+    }, 800);
+  }
+
+  /**
+   * Blur content when the browser window loses focus.
+   *
+   * ## Why this matters:
+   * On macOS, Cmd+Shift+3/4/5 first triggers a keydown (which we
+   * intercept above), but the user can also use the Screenshot app
+   * from Launchpad or the Touch Bar, which doesn't trigger keydown.
+   * When any screenshot tool activates, the browser loses focus briefly.
+   * By blurring on focus loss, we cover both cases.
+   *
+   * ## Trade-off:
+   * This means content blurs whenever the user clicks outside the
+   * browser window (e.g., switching to another app). This is
+   * intentional — it matches the behavior of native secure apps
+   * (banking apps blur on task switcher).
+   */
+  function _handleWindowBlur() {
+    if (!_active) return;
+    _blurContentBriefly();
+    _emitEvent("screenCapture", "medium", { method: "window_blur" });
+  }
+
+  /**
+   * Restore content when the user returns to the browser window.
+   *
+   * When the window regains focus, we immediately clear the blur
+   * overlay and canvas filters. This ensures the user can resume
+   * viewing without waiting for the 800ms timeout. If they try to
+   * screenshot again, the blur will re-activate.
+   */
+  function _handleWindowFocus() {
+    if (!_active) return;
+    const overlay = document.getElementById(BLUR_OVERLAY_ID);
+    if (overlay) overlay.style.display = "none";
+    const canvases = document.querySelectorAll("canvas");
+    canvases.forEach(function (c) {
+      c.style.filter = "";
+    });
+  }
+
+  function installBlurProtection() {
+    window.addEventListener("blur", _handleWindowBlur);
+    window.addEventListener("focus", _handleWindowFocus);
+  }
+
+  function uninstallBlurProtection() {
+    window.removeEventListener("blur", _handleWindowBlur);
+    window.removeEventListener("focus", _handleWindowFocus);
+    const overlay = document.getElementById(BLUR_OVERLAY_ID);
+    if (overlay) overlay.remove();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // LAYER 4: KEYBOARD SHORTCUT INTERCEPTION
   // ═══════════════════════════════════════════════════════════════
 
@@ -371,6 +473,24 @@
       ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "C") ||
       // Ctrl/Cmd + Shift + S (Save As)
       ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S");
+
+    // macOS screenshot hotkeys: Cmd+Shift+3 (full), Cmd+Shift+4 (region),
+    // Cmd+Shift+5 (screenshot toolbar). We can't fully block these at OS
+    // level, but we CAN detect them and blur content instantly.
+    const isMacScreenshot =
+      e.metaKey && e.shiftKey &&
+      (e.key === "3" || e.key === "4" || e.key === "5");
+
+    if (isMacScreenshot) {
+      e.preventDefault();
+      e.stopPropagation();
+      _blurContentBriefly();
+      _emitEvent("screenCapture", "high", {
+        method: "mac_screenshot_hotkey",
+        key: e.key,
+      });
+      return;
+    }
 
     if (dominated) {
       e.preventDefault();
@@ -656,6 +776,7 @@
       installKeyboardProtection();
       installInteractionProtection();
       installVisibilityMonitoring();
+      installBlurProtection();
 
       // Register Service Worker for CSP headers
       registerServiceWorker();
@@ -734,6 +855,7 @@
       uninstallKeyboardProtection();
       uninstallInteractionProtection();
       uninstallVisibilityMonitoring();
+      uninstallBlurProtection();
       removeSecurityCSS();
       document.body.classList.remove("cyberguard-secure");
     },

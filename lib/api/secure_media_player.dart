@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../media/player_controls.dart';
 import '../media/player_overlay.dart';
 import '../media/player_state.dart';
 import '../media/secure_player_controller.dart';
+import '../platform/web_video_stub.dart'
+    if (dart.library.js_interop) '../platform/web_video_web.dart'
+    as web_video;
 import '../ui/secure_content_widget.dart';
 import 'models/media_source.dart';
 import 'models/player_config.dart';
@@ -33,6 +37,7 @@ import 'models/player_config.dart';
 ///   └── SecureContentWidget (watermark + blur + FLAG_SECURE)
 ///         └── Stack
 ///               ├── Texture(textureId)     ← native video frames
+///               │   OR HtmlElementView     ← web video element
 ///               ├── PlayerOverlay          ← buffering/error/completed
 ///               └── PlayerControls         ← interactive controls
 /// ```
@@ -118,8 +123,12 @@ class _SecureMediaPlayerState extends State<SecureMediaPlayer> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Native video surface via Texture
-                    if (state.textureId != null)
+                    // Video surface: web uses HTML video, native uses Texture
+                    if (kIsWeb && _controller.isWebPlayer)
+                      Positioned.fill(
+                        child: _buildWebVideoSurface(),
+                      )
+                    else if (state.textureId != null)
                       Positioned.fill(
                         child: _buildVideoSurface(state),
                       )
@@ -149,6 +158,19 @@ class _SecureMediaPlayerState extends State<SecureMediaPlayer> {
           );
         },
       ),
+    );
+  }
+
+  /// Build an HTML5 video element for web playback.
+  Widget _buildWebVideoSurface() {
+    final url = _controller.resolvedUrl;
+    if (url == null) return _buildPlaceholder();
+
+    return web_video.createWebVideoElement(
+      url: url,
+      elementId: _controller.webElementId!,
+      autoPlay: widget.config.autoPlay,
+      volume: widget.config.initialVolume,
     );
   }
 

@@ -13,6 +13,10 @@ import '../../api/models/media_source.dart';
 /// Each [PdfController] owns one native document handle. Pages are
 /// rendered as RGBA pixel data and displayed via [RawImage] in Dart.
 ///
+/// On web, delegates to the JavaScript CyberGuardPdf bridge. Since the
+/// browser cannot render PDF pages to pixels without PDF.js, the web
+/// implementation stores the document URL for iframe-based viewing.
+///
 /// ## Usage:
 /// ```dart
 /// final controller = PdfController(source: PdfSource.network(url));
@@ -51,6 +55,10 @@ class PdfController extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  /// The document URL for web iframe rendering.
+  String? _webUrl;
+  String? get webUrl => _webUrl;
+
   /// Cache of rendered page pixels (pageIndex → RenderedPage).
   final Map<int, RenderedPage> _pageCache = {};
 
@@ -67,6 +75,11 @@ class PdfController extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    if (kIsWeb) {
+      await _openWeb();
+      return;
+    }
 
     try {
       final sourceData = _encodeSource(source);
@@ -93,11 +106,35 @@ class PdfController extends ChangeNotifier {
     }
   }
 
+  /// Web-specific open using URL resolution.
+  Future<void> _openWeb() async {
+    try {
+      // Resolve the source to a URL
+      _webUrl = switch (source) {
+        NetworkPdfSource(url: final url) => url,
+        AssetPdfSource(assetPath: final path) => 'assets/$path',
+        FilePdfSource(filePath: final path) => path,
+        MemoryPdfSource() => null,
+      };
+
+      _documentId = 'web_pdf_${DateTime.now().millisecondsSinceEpoch}';
+      _pageCount = 1; // Web can't detect page count without PDF.js
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Failed to open PDF on web: $e';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Render a specific page at the given dimensions.
   ///
   /// Returns [RenderedPage] with RGBA pixel data, or null on error.
   /// Results are cached — subsequent calls for the same page return
   /// the cached version.
+  ///
+  /// On web, returns null (web uses iframe-based rendering instead).
   Future<RenderedPage?> renderPage(
     int pageIndex, {
     required int width,
@@ -105,6 +142,9 @@ class PdfController extends ChangeNotifier {
   }) async {
     if (_disposed || _documentId == null) return null;
     if (pageIndex < 0 || pageIndex >= _pageCount) return null;
+
+    // Web cannot render to pixels without PDF.js
+    if (kIsWeb) return null;
 
     // Check cache
     final cached = _pageCache[pageIndex];
@@ -155,6 +195,9 @@ class PdfController extends ChangeNotifier {
   Future<PageSize?> getPageSize(int pageIndex) async {
     if (_disposed || _documentId == null) return null;
 
+    // Web: return default US Letter size
+    if (kIsWeb) return const PageSize(width: 612, height: 792);
+
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>(
         'getPageSize',
@@ -178,8 +221,12 @@ class PdfController extends ChangeNotifier {
   /// Search for text within the document.
   ///
   /// Returns a list of search results with page index and match rects.
+  /// Not available on web without PDF.js.
   Future<List<PdfSearchResult>> searchText(String query) async {
     if (_disposed || _documentId == null || query.isEmpty) return [];
+
+    // Web: text search not available
+    if (kIsWeb) return [];
 
     try {
       final result = await _channel.invokeListMethod<Map<dynamic, dynamic>>(
@@ -273,14 +320,15 @@ class PdfController extends ChangeNotifier {
 
   /// Close the native PDF document and release resources.
   Future<void> close() async {
-    if (_documentId != null) {
+    if (_documentId != null && !kIsWeb) {
       try {
         await _channel.invokeMethod('close', {'documentId': _documentId});
       } on PlatformException {
         // Best-effort cleanup
       }
-      _documentId = null;
     }
+    _documentId = null;
+    _webUrl = null;
     _pageCache.clear();
   }
 

@@ -66,10 +66,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                 GlassCard(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
-                    child: ThreatLevelGauge(
-                      level: _threatLevel,
-                      size: 160,
-                    ),
+                    child: ThreatLevelGauge(level: _threatLevel, size: 160),
                   ),
                 ),
 
@@ -103,15 +100,24 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
 
   Widget _buildDefenseGrid() {
     final defenses = [
-      _Defense('Screen Shield', Icons.screen_lock_portrait_rounded,
-          !_state.isScreenBeingCaptured),
-      _Defense('Integrity Check', Icons.verified_user_rounded, true),
-      _Defense('Anti-Debug', Icons.bug_report_rounded,
-          !_state.isDebuggerAttached),
-      _Defense('Root Protection', Icons.admin_panel_settings_rounded,
-          !_state.isDeviceRooted),
-      _Defense('Encryption', Icons.lock_rounded, true),
-      _Defense('RASP Engine', Icons.shield_rounded, true),
+      _Defense(
+        'Screen Shield',
+        Icons.screen_lock_portrait_rounded,
+        !_state.isScreenBeingCaptured,
+      ),
+      const _Defense('Integrity Check', Icons.verified_user_rounded, true),
+      _Defense(
+        'Anti-Debug',
+        Icons.bug_report_rounded,
+        !_state.isDebuggerAttached,
+      ),
+      _Defense(
+        'Root Protection',
+        Icons.admin_panel_settings_rounded,
+        !_state.isDeviceRooted,
+      ),
+      const _Defense('Encryption', Icons.lock_rounded, true),
+      const _Defense('RASP Engine', Icons.shield_rounded, true),
     ];
 
     return GridView.builder(
@@ -143,8 +149,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color:
-                      d.active ? AppTheme.textPrimary : AppTheme.danger,
+                  color: d.active ? AppTheme.textPrimary : AppTheme.danger,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -167,12 +172,16 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
 
   Widget _buildDeviceStatus() {
     final items = [
-      _StatusItem('Screen Capture', _state.isScreenBeingCaptured
-          ? 'DETECTED' : 'Clear'),
-      _StatusItem('Root/Jailbreak', _state.isDeviceRooted ? 'DETECTED' : 'Clean'),
+      _StatusItem(
+        'Screen Capture',
+        _state.isScreenBeingCaptured ? 'DETECTED' : 'Clear',
+      ),
+      _StatusItem(
+        'Root/Jailbreak',
+        _state.isDeviceRooted ? 'DETECTED' : 'Clean',
+      ),
       _StatusItem('Emulator', _state.isRunningOnEmulator ? 'YES' : 'No'),
-      _StatusItem('Debugger', _state.isDebuggerAttached
-          ? 'ATTACHED' : 'None'),
+      _StatusItem('Debugger', _state.isDebuggerAttached ? 'ATTACHED' : 'None'),
       _StatusItem('Secure Mode', _state.isSecureModeActive ? 'Active' : 'Idle'),
     ];
 
@@ -180,7 +189,8 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: items.map((item) {
-          final isDanger = item.value == 'DETECTED' ||
+          final isDanger =
+              item.value == 'DETECTED' ||
               item.value == 'ATTACHED' ||
               item.value == 'YES';
           return Padding(
@@ -210,8 +220,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color:
-                          isDanger ? AppTheme.danger : AppTheme.accentGreen,
+                      color: isDanger ? AppTheme.danger : AppTheme.accentGreen,
                     ),
                   ),
                 ),
@@ -226,9 +235,24 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
   Widget _buildEventLog() {
     // Show placeholder events for demo
     final events = [
-      _EventItem('Security initialized', 'All layers active', Icons.check_circle_rounded, AppTheme.accentGreen),
-      _EventItem('Screen capture check', 'No capture detected', Icons.screen_lock_portrait_rounded, AppTheme.accent),
-      _EventItem('Integrity verified', 'App binary intact', Icons.verified_rounded, AppTheme.primaryLight),
+      const _EventItem(
+        'Security initialized',
+        'All layers active',
+        Icons.check_circle_rounded,
+        AppTheme.accentGreen,
+      ),
+      const _EventItem(
+        'Screen capture check',
+        'No capture detected',
+        Icons.screen_lock_portrait_rounded,
+        AppTheme.accent,
+      ),
+      const _EventItem(
+        'Integrity verified',
+        'App binary intact',
+        Icons.verified_rounded,
+        AppTheme.primaryLight,
+      ),
     ];
 
     return GlassCard(

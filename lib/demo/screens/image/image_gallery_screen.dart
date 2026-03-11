@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../api/models/media_source.dart';
-import '../../../api/secure_image_viewer.dart';
 import '../../../api/models/player_config.dart';
+import '../../../api/secure_image_viewer.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/glass_card.dart';
 
@@ -36,11 +36,11 @@ class ImageGalleryScreen extends StatelessWidget {
           child: Column(
             children: [
               // Info banner
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: GlassCard(
-                  padding: const EdgeInsets.all(12),
-                  child: const Row(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
                     children: [
                       Icon(
                         Icons.photo_library_rounded,
@@ -67,8 +67,9 @@ class ImageGalleryScreen extends StatelessWidget {
                 child: GridView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        MediaQuery.of(context).size.width > 600 ? 3 : 2,
+                    crossAxisCount: MediaQuery.of(context).size.width > 600
+                        ? 3
+                        : 2,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                     childAspectRatio: 1.2,

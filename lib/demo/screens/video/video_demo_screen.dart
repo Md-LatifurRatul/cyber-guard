@@ -20,21 +20,23 @@ class _VideoDemoScreenState extends State<VideoDemoScreen> {
 
   static const _samples = <_VideoSample>[
     _VideoSample(
-      title: 'Big Buck Bunny (MP4)',
+      title: 'Nature Aerial (MP4)',
       subtitle: 'H.264, 1080p',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      url: 'https://www.pexels.com/download/video/29607597/',
       icon: Icons.movie_rounded,
     ),
     _VideoSample(
-      title: 'Elephant Dream (MP4)',
-      subtitle: 'H.264, 480p',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+      title: 'Big Buck Bunny (MP4)',
+      subtitle: 'H.264, 1080p',
+      url:
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       icon: Icons.movie_rounded,
     ),
     _VideoSample(
       title: 'Sintel (MP4)',
       subtitle: 'H.264, 720p',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+      url:
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
       icon: Icons.movie_rounded,
     ),
   ];
@@ -57,15 +59,20 @@ class _VideoDemoScreenState extends State<VideoDemoScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Player
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: SecureMediaPlayer(
-                  key: ValueKey(sample.url),
-                  source: MediaSource.network(sample.url),
-                  config: const PlayerConfig(
-                    autoPlay: true,
-                    showControls: true,
+              // Player — constrain max height to prevent overflow on large screens
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                ),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: SecureMediaPlayer(
+                    key: ValueKey(sample.url),
+                    source: MediaSource.network(sample.url),
+                    config: const PlayerConfig(
+                      autoPlay: true,
+                      showControls: true,
+                    ),
                   ),
                 ),
               ),
@@ -73,10 +80,10 @@ class _VideoDemoScreenState extends State<VideoDemoScreen> {
               const SizedBox(height: 16),
 
               // Info banner
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
                 child: GlassCard(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   child: Row(
                     children: [
                       Icon(
@@ -84,8 +91,8 @@ class _VideoDemoScreenState extends State<VideoDemoScreen> {
                         size: 18,
                         color: AppTheme.accentGreen,
                       ),
-                      const SizedBox(width: 8),
-                      const Expanded(
+                      SizedBox(width: 8),
+                      Expanded(
                         child: Text(
                           'Content protected by watermark + screen capture prevention',
                           style: TextStyle(
@@ -127,10 +134,11 @@ class _VideoDemoScreenState extends State<VideoDemoScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: (isSelected
-                                        ? AppTheme.accent
-                                        : AppTheme.textMuted)
-                                    .withValues(alpha: 0.15),
+                                color:
+                                    (isSelected
+                                            ? AppTheme.accent
+                                            : AppTheme.textMuted)
+                                        .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(

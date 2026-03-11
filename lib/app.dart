@@ -18,8 +18,7 @@ class CyberGuardApp extends StatefulWidget {
 
   /// Access the current security state from anywhere in the widget tree.
   static SecurityState? of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<_SecurityScope>();
+    final scope = context.dependOnInheritedWidgetOfExactType<_SecurityScope>();
     return scope?.state;
   }
 
@@ -119,15 +118,10 @@ class _AppShellState extends State<_AppShell> {
 /// Rebuilds dependents whenever [state] changes, so widgets that call
 /// `CyberGuardApp.of(context)` automatically react to security events.
 class _SecurityScope extends InheritedWidget {
-  const _SecurityScope({
-    required this.state,
-    required super.child,
-  });
+  const _SecurityScope({required this.state, required super.child});
 
   final SecurityState state;
 
   @override
-  bool updateShouldNotify(_SecurityScope oldWidget) =>
-      state != oldWidget.state;
+  bool updateShouldNotify(_SecurityScope oldWidget) => state != oldWidget.state;
 }
-

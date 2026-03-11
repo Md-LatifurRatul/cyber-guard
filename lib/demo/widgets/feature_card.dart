@@ -33,7 +33,6 @@ class FeatureCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -68,7 +67,7 @@ class FeatureCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          const Spacer(),
           Text(
             title,
             style: const TextStyle(
@@ -76,15 +75,16 @@ class FeatureCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             style: const TextStyle(
               fontSize: 12,
               color: AppTheme.textMuted,
             ),
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ],

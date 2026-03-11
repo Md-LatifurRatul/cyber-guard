@@ -59,6 +59,12 @@ class SecureContentWidget extends StatefulWidget {
 }
 
 class _SecureContentWidgetState extends State<SecureContentWidget> {
+  /// Reference counter for secure mode. Multiple SecureContentWidgets can
+  /// be mounted simultaneously (e.g. when switching videos with ValueKey).
+  /// We only call enterSecureMode when going 0→1 and exitSecureMode when
+  /// going 1→0. This prevents the "deactivated → activated" flicker.
+  static int _secureModeRefCount = 0;
+
   SecurityState _securityState = const SecurityState();
   StreamSubscription<SecurityState>? _stateSubscription;
   bool _secureModeEntered = false;
@@ -92,13 +98,20 @@ class _SecureContentWidgetState extends State<SecureContentWidget> {
   Future<void> _enterSecureMode() async {
     if (_secureModeEntered) return;
     _secureModeEntered = true;
-    await SecurityChannel.instance.enterSecureMode();
+    _secureModeRefCount++;
+    if (_secureModeRefCount == 1) {
+      await SecurityChannel.instance.enterSecureMode();
+    }
   }
 
   Future<void> _exitSecureMode() async {
     if (!_secureModeEntered) return;
     _secureModeEntered = false;
-    await SecurityChannel.instance.exitSecureMode();
+    _secureModeRefCount--;
+    if (_secureModeRefCount <= 0) {
+      _secureModeRefCount = 0;
+      await SecurityChannel.instance.exitSecureMode();
+    }
   }
 
   void _onSecurityStateChanged(SecurityState state) {
