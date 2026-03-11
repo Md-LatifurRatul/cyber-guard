@@ -81,8 +81,12 @@ class SecurityState {
 
   /// Whether content should be blurred right now.
   ///
-  /// True if environment is unsafe OR screen is being captured.
-  bool get shouldBlurContent => !isEnvironmentSafe || isScreenBeingCaptured;
+  /// True only during active screen capture/recording or when the app is
+  /// backgrounded. Environment threats (root, emulator, debugger, etc.)
+  /// are tracked for RASP scoring and audit logging but do NOT trigger
+  /// content blur — content is shown normally until an active capture
+  /// attempt is detected.
+  bool get shouldBlurContent => isScreenBeingCaptured || isAppBackgrounded;
 
   /// Whether any threat is currently active.
   bool get hasActiveThreats => activeThreats.isNotEmpty;

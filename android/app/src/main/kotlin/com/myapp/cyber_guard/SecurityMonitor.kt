@@ -257,9 +257,13 @@ class SecurityMonitor(
         try {
             val result = memoryProtection?.verifyAll() ?: return
             if (!result.isIntact && !integrityViolated.getAndSet(true)) {
+                // Only escalate to critical if actual injection is found.
+                // Library count changes and DEX mismatches can be false positives
+                // (WebView loading, app updates, etc.) and should not kill the app.
+                val severity = if (!result.noInjection) "critical" else "high"
                 eventEmitter.emit(
                     type = "integrityViolation",
-                    severity = "critical",
+                    severity = severity,
                     metadata = mapOf(
                         "failedChecks" to result.failedChecks,
                     )

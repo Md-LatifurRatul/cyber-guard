@@ -58,7 +58,7 @@ class PdfDemoScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: SecurePdfViewer(
                     source: const PdfSource.network(
-                      'https://www.africau.edu/images/default/sample.pdf',
+                      'https://pdfobject.com/pdf/sample-3pp.pdf',
                     ),
                     onError: (error) {
                       debugPrint('PDF error: $error');

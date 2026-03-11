@@ -54,6 +54,7 @@ class MemoryProtection(private val context: Context) {
     fun initialize() {
         // Compute current DEX hash
         val currentDexHash = computeDexHash()
+        val currentLibCount = countLoadedLibraries()
 
         // Check if we have a stored baseline
         val storedHash = prefs.getString(KEY_DEX_HASH, null)
@@ -61,13 +62,16 @@ class MemoryProtection(private val context: Context) {
             // First run — store baseline
             prefs.edit()
                 .putString(KEY_DEX_HASH, currentDexHash)
-                .putInt(KEY_INITIAL_LIB_COUNT, countLoadedLibraries())
+                .putInt(KEY_INITIAL_LIB_COUNT, currentLibCount)
                 .apply()
-            Log.i(TAG, "Integrity baseline established")
+            Log.i(TAG, "Integrity baseline established (libs: $currentLibCount)")
         }
 
         initialDexHash = storedHash ?: currentDexHash
-        initialLibraryCount = prefs.getInt(KEY_INITIAL_LIB_COUNT, countLoadedLibraries())
+        // Always use the CURRENT library count as baseline, since Android
+        // library loading varies between launches (WebView version, GPU driver, etc.)
+        initialLibraryCount = currentLibCount
+        Log.d(TAG, "Library baseline: $initialLibraryCount")
     }
 
     /**
@@ -149,7 +153,11 @@ class MemoryProtection(private val context: Context) {
      */
     fun verifyLibraryIntegrity(): Boolean {
         val currentCount = countLoadedLibraries()
-        val threshold = initialLibraryCount + 5 // Allow 5 new libraries (lazy loading)
+        // Android dynamically loads many libraries at runtime:
+        // WebView (~20), media codecs (~15), GPU drivers (~10), etc.
+        // A threshold of +50 avoids false positives on real devices
+        // while still catching bulk injection attacks.
+        val threshold = initialLibraryCount + 50
 
         if (currentCount > threshold) {
             Log.w(TAG, "Library count increased: $initialLibraryCount → $currentCount (threshold: $threshold)")

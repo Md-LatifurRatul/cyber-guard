@@ -232,7 +232,8 @@ void main() {
 
       expect(updated.isDeviceRooted, true);
       expect(updated.isEnvironmentSafe, false);
-      expect(updated.shouldBlurContent, true);
+      // Environment threats don't trigger blur — only active capture does
+      expect(updated.shouldBlurContent, false);
       expect(updated.activeThreats, contains(SecurityEventType.rootDetected));
     });
 
@@ -295,7 +296,7 @@ void main() {
       expect(state.isDeviceRooted, true); // Still flagged
     });
 
-    test('shouldBlurContent true when environment unsafe', () {
+    test('shouldBlurContent false when environment unsafe but no capture', () {
       var state = const SecurityState();
       state = state.applyEvent(SecurityEvent(
         type: SecurityEventType.hookingDetected,
@@ -303,7 +304,9 @@ void main() {
         timestamp: DateTime.now(),
       ));
 
-      expect(state.shouldBlurContent, true);
+      // Environment threats are tracked but don't trigger content blur
+      expect(state.isEnvironmentSafe, false);
+      expect(state.shouldBlurContent, false);
     });
 
     test('shouldBlurContent true when screen captured even if env safe', () {

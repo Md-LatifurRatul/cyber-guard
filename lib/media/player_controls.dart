@@ -162,15 +162,9 @@ class _PlayerControlsState extends State<PlayerControls>
   }
 
   Widget _buildCenterButton() {
+    // Buffering spinner is handled by PlayerOverlay — don't duplicate it here
     if (_state.isBuffering) {
-      return const SizedBox(
-        width: 48,
-        height: 48,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 3,
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     final icon = switch (_state.status) {

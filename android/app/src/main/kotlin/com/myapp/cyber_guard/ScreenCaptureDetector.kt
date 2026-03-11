@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Display
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * Detects screen capture, screen recording, and screen mirroring on Android.
@@ -39,10 +40,13 @@ import android.view.Display
  */
 class ScreenCaptureDetector(
     private val activity: Activity,
-    private val eventEmitter: SecurityEventEmitter
+    private val eventEmitter: SecurityEventEmitter,
+    private val methodChannel: MethodChannel? = null
 ) {
     companion object {
         private const val TAG = "CaptureDetector"
+        /** Delay before auto-clearing screenshot capture state (ms). */
+        private const val SCREENSHOT_CLEAR_DELAY_MS = 2000L
     }
 
     private var displayListener: DisplayManager.DisplayListener? = null
@@ -93,9 +97,10 @@ class ScreenCaptureDetector(
             }
 
             override fun onDisplayRemoved(displayId: Int) {
-                // Display removed — mirroring/recording may have stopped.
-                // We don't clear the event here because the recording
-                // might have already captured content.
+                // Virtual display removed — recording/mirroring stopped.
+                // Clear the capture state so content blur deactivates.
+                Log.i(TAG, "Virtual display removed (ID: $displayId), clearing capture state")
+                emitCaptureCleared()
             }
         }
 
@@ -169,6 +174,9 @@ class ScreenCaptureDetector(
                         severity = "high",
                         metadata = mapOf("method" to "screen_capture_callback")
                     )
+                    // Screenshots are instantaneous — auto-clear after brief delay
+                    // so the blur deactivates and content becomes visible again
+                    mainHandler.postDelayed({ emitCaptureCleared() }, SCREENSHOT_CLEAR_DELAY_MS)
                 }
                 screenCaptureCallback = callback
                 activity.registerScreenCaptureCallback(activity.mainExecutor, callback)
@@ -191,6 +199,25 @@ class ScreenCaptureDetector(
                 }
             }
             screenCaptureCallback = null
+        }
+    }
+
+    // ─── Capture Cleared ───
+
+    /**
+     * Notify Dart that screen capture has stopped.
+     *
+     * Calls Dart's `onCaptureCleared` method via the MethodChannel,
+     * which clears `isScreenBeingCaptured` and deactivates the blur shield.
+     */
+    private fun emitCaptureCleared() {
+        mainHandler.post {
+            try {
+                methodChannel?.invokeMethod("onCaptureCleared", null)
+                Log.i(TAG, "Capture cleared event sent to Dart")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send capture cleared: ${e.message}")
+            }
         }
     }
 }

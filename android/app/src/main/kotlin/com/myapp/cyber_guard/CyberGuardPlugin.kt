@@ -229,7 +229,7 @@ class CyberGuardPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
             // Layer 2: Start screen capture detection
             if (captureDetector == null) {
-                captureDetector = ScreenCaptureDetector(currentActivity, eventEmitter)
+                captureDetector = ScreenCaptureDetector(currentActivity, eventEmitter, methodChannel)
             }
             captureDetector?.startDetection()
 
